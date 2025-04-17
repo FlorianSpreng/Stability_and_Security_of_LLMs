@@ -3,19 +3,9 @@ import os
 import configparser
 
 
-def get_patient_system(user_data, persona):
-
-    user_data_string = (
-        "Über den Artzt hast du volgende infos: "
-        f"Der Name: {user_data['Vorname']} {user_data['Nachname']} "
-        f"Das Geschlecht: {user_data['Geschlecht']} "
-        f"Das Alter: {user_data['Alter']} "
-        "Bedenke bei deinen Antworten, dass sich Verhaltensweisen eines Menschen abhängig "
-        "von seinem gegenüber und der Informationen "
-        "über die eigene Person auf seine Verhaltensweisen (zb. wie jemand Angesprochen wird) "
-        "auswirken könne. "
-    )
-
+# Baut aus den informationen aus der patient_{id}_config.ini und der informationen, die über den Arzt vorliegen
+# einen Systemprompt
+def get_patient_system(persona):
     config = configparser.ConfigParser()
     with open(
             f"data/patients/{persona}_config.ini", "r", encoding="utf-8"
@@ -35,8 +25,6 @@ def get_patient_system(user_data, persona):
         f"{config['Records']['text']}\n"
         f"{diagnose_string}\n"
         f"Du verfügst über folgende Persoenlichkeit: {config['Persoenlichkeit']['text']}\n"
-        f"{user_data_string}\n"
-        f"{json.dumps(json.loads(config['PremiumPics']['text']), indent=4)}\n"
         f"{open(os.path.join('data', 'patients', 'supplemental_prompt.txt'),
                 'r',
                 encoding='utf-8',
@@ -46,30 +34,28 @@ def get_patient_system(user_data, persona):
 
     return system_prompt
 
-def get_doctor_system(user_data, doctor_persona):
-    #config = configparser.ConfigParser()
-    #with open(
-    #        f"doctors/{doctor_persona}/doctor_config.ini", "r", encoding="utf-8"
-    #) as f:
-    #    config.read_file(f)
+
+# Baut aus den informationen aus der medic_{id}_config.ini einen Systemprompt
+def get_doctor_system(medic):
+    config = configparser.ConfigParser()
+    with open( os.path.join('data', 'medics', f'{medic}_config.ini'), "r", encoding="utf-8"
+    ) as f:
+        config.read_file(f)
 
     user_data_string = (
         "Über dich hast du folgende Informationen: "
-        f"Name: {user_data['Vorname']} {user_data['Nachname']}, "
-        f"Geschlecht: {user_data['Geschlecht']}, "
-        f"Alter: {user_data['Alter']} Jahre.\n"
+        f"Voller Name: {config["personal data"]['prename']} {config["personal data"]['name']}, "
+        f"Geschlecht: {config["personal data"]['sex']}, "
+        f"Alter: {config["personal data"]['age']} Jahre.\n"
+        f"Du bist ein Arzt mit dem folgenden Hintergrund: {config["acting data"]['background']}\n"
+        f"Deine Fachrichtung ist: {config["acting data"]['medical_field']}\n"
+        f"Dein Kommunikationsstil: {config["acting data"]['communication_style']}\n"
         "Passe dein Gesprächsverhalten entsprechend an (z.B. kindgerecht, respektvoll, altersangepasst etc.).\n"
     )
 
-    #arzt_info = (
-    #    f"Du bist ein Arzt mit dem folgenden Hintergrund: {config['Hintergrund']['text']}\n"
-    #    f"Deine Fachrichtung ist: {config['Fachrichtung']['text']}\n"
-    #    f"Dein Kommunikationsstil: {config['Kommunikation']['text']}\n"
-    #)
 
     system_prompt = (
         f"{open(os.path.join('data', 'medics', 'pre_prompt.txt'), 'r', encoding='utf-8').read()}\n"
-        #f"{arzt_info}"
         f"{user_data_string}"
         f"{open(os.path.join('data', 'medics', 'supplemental_prompt.txt'), 'r', encoding='utf-8').read()}\n"
     )

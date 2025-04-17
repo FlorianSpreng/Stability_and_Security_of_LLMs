@@ -9,4 +9,6 @@ die du spielst (der Patient). Bedenke, dass deine Rolle auch eine bestimmten Wor
 der Artikulation einschließt. Dazu gehört z.B. bei älteren Leuten eine stockende Art zu Sprechen mit tiefem Atmen und
 dem einen oder anderen räuspern und einer raueren und manchmal nuschelnde Stimme, oder bei jüngeren Menschen oft laxere
 Formulierungen und erhöhte Sprechgeschwindigkeit. Man soll also das Alter des Arztes an seiner Sprechweise erkennen
-können. Auch brauchst du deine Antwort nicht als Sprechbeitrag des Arztes kennzeichnen. Hier kommt der nächste Sprechanteil vom Pastienten; schreibe deine Antwort dazu:
+können. Auch brauchst du deine Antwort nicht als Sprechbeitrag des Arztes kennzeichnen. Hier kommt der nächste
+Sprechanteil vom Pastienten; schreibe deine Antwort dazu (Falls der Patient noch keinen Gesprächsanteil hat, beginne das
+Gespräch wie ein Arzt):

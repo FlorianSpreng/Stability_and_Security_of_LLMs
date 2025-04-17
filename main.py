@@ -2,6 +2,7 @@ import os
 
 import dotenv
 from black.trans import defaultdict
+from numpy.f2py.auxfuncs import throw_error
 from openai import OpenAI
 from prisma.models import conversation
 
@@ -14,6 +15,8 @@ BASE_URL = os.getenv("BASE_URL")
 model = "meta-llama-3.1-8b-instruct"  # Choose any available model
 system_content = "You are a helpful assistant"
 
+message = ""
+
 user_data = {
     "Vorname": "Florian",
     "Nachname": "Spreng",
@@ -23,41 +26,39 @@ user_data = {
 
 conversation_historie = []
 
-
-def sendMessage(message, role, i):
-    # Start OpenAI client
-    client = OpenAI(
+client = OpenAI(
         api_key=API_KEY,
         base_url=BASE_URL
     )
 
-    if role == "patient":
-        role_content = get_patient_system(user_data, "patient_1")
-    elif role == "medic":
-        role_content = get_doctor_system(user_data, "medic_1")
+def get_configurations():
+    pass
 
-    # Get response
+def send_message(role, i, system_prompt):
+    global message
+
     chat_completion = client.chat.completions.create(
-        messages=[{"role": "system", "content": role_content},
-                  {"role": role, "content": message},
-                  {"role": role, "content": f"Das ist der bisherige gesprächsverlauf: {conversation_historie}"}
+        messages=[{"role": "system", "content": f"Verhaltensanweisung {system_prompt} + bisheriger Gesprächsverlauf: {conversation_historie}"},
+                  {"role": role, "content": message}
                   ],
         model=model,
     )
-    print(f"Message={i}, User={role}:", chat_completion.choices[0].message.content)
-    conversation_historie.append(f"Message={i}, User={role}:{chat_completion.choices[0].message.content}")
-    return chat_completion.choices[0].message.content
+
+    response = chat_completion.choices[0].message.content
+    print(f"Message={i}, User={role}: {response}")
+    conversation_historie.append({"role": role, "content": response})
+    message = response
 
 
 def main():
-    message = "Guten Tag, wie geht es ihnen"
-    conversation_historie.append(f"Message=0, User=medic:{message}")
-    print(f"Message=0, User=medic:", message)
     for i in range(1, 10):
-        message = sendMessage(message, "patient", i)
-        i += 1
-        message = sendMessage(message, "medic", i)
-        i += 1
+        if i % 2 != 0:
+            send_message("arzt", i, get_doctor_system("medic_1"))
+        else:
+            send_message("patient", i, get_patient_system("patient_1"))
 
 
-main()
+
+
+if __name__ == "__main__":
+    main()
