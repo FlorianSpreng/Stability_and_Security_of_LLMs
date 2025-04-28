@@ -1,15 +1,6 @@
-import configparser
-import os
-<<<<<<< Updated upstream
-import dotenv
+import configparser, dotenv, os
 from openai import OpenAI
-
-=======
 from datetime import datetime
-
-import dotenv
-from openai import OpenAI
->>>>>>> Stashed changes
 from processing import get_doctor_system, get_patient_system
 
 dotenv.load_dotenv(os.path.join(".", ".env"))
@@ -19,43 +10,25 @@ conversation_historie = []
 conversation_log = []
 
 client = OpenAI(
-<<<<<<< Updated upstream
     api_key=os.getenv("OPENAI_API_KEY"),
     base_url=os.getenv("BASE_URL")
 )
-
-=======
-    api_key=API_KEY,
-    base_url=BASE_URL
-)
->>>>>>> Stashed changes
 
 def thoughtchop(message):
     if "<think>" in message:
         message = message.split("</think>")[1].replace("\n", "")
     return message
 
-<<<<<<< Updated upstream
 
-def send_message(role, i, system_prompt):
-=======
 def send_message(role, i, system_prompt, model):
->>>>>>> Stashed changes
     global message
     global conversation_historie
     global conversation_log
 
     chat_completion = client.chat.completions.create(
-<<<<<<< Updated upstream
-        messages=[
-            {"role": "system",
-             "content": f"Verhaltensanweisung {system_prompt} + bisheriger Gesprächsverlauf: {conversation_historie}"},
-            {"role": role,
-             "content": message}
-=======
+
         messages=[{"role": "system", "content": f"Verhaltensanweisung {system_prompt} + bisheriger Gesprächsverlauf: {conversation_historie}"},
                   {"role": "user", "content": f"{role}: {message}"}
->>>>>>> Stashed changes
                   ],
         model=model
     )
@@ -68,16 +41,6 @@ def send_message(role, i, system_prompt, model):
     message = response
 
 
-<<<<<<< Updated upstream
-def main():
-    for x in range(1,4):
-        for y in range(1,4):
-            for i in range(1, 10):
-                if i % 2 != 0:
-                    send_message("arzt", i, get_doctor_system(f"medic_{x}"))
-                else:
-                    send_message("patient", i, get_patient_system(f"patient_{y}"))
-=======
 def safe_conversation_history(model, medic, patient):
     global conversation_log
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -108,17 +71,18 @@ def run(medic_role, patient_role, model):
     safe_conversation_history(model, medic_role, patient_role)
     conversation_log = []
     conversation_historie = []
->>>>>>> Stashed changes
 
 def main():
     config = configparser.ConfigParser()
     with open("config.ini", "r", encoding="utf-8") as f:
         config.read_file(f)
-    for model in config["models"]:
-        try:
-            run("medic_1", "patient_1", model)
-        except Exception as e:
-            print(f"Fehler bei Modell {model}: {e}")
+    for x in range(1, 4):
+        for y in range(1, 4):
+            for model in config["models"]:
+                try:
+                    run("medic_1", "patient_1", model)
+                except Exception as e:
+                    print(f"Fehler bei Modell {model}: {e}")
 
 if __name__ == "__main__":
     main()
