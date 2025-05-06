@@ -11,7 +11,8 @@ from tqdm import tqdm
 from processing_en import get_doctor_system, get_patient_system
 
 dotenv.load_dotenv(os.path.join(".", ".env"))
-
+retry_count = 0
+failed_runs = []
 message = ""
 conversation_historie = []
 conversation_log = []
@@ -45,7 +46,8 @@ def send_message(role, i, system_prompt, model):
 
     chat_completion = client.chat.completions.create(
 
-        messages=[{"role": "system", "content": f"Behaviour: {system_prompt} + conversation history: {conversation_historie}"},
+        messages=[{"role": "system",
+                   "content": f"Behaviour: {system_prompt} + conversation history: {conversation_historie}"},
                   {"role": "user", "content": f"{role}: {message}"}
                   ],
         model=model
@@ -58,67 +60,78 @@ def send_message(role, i, system_prompt, model):
     conversation_historie.append({"time": now, "role": role, "content": response})
     message = response
 
-def safe_conversation_history(model, medic, patient):
+
+def safe_conversation_history(medic_model, patient_model, medic, patient):
     global conversation_log
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    if not exists(os.path.join(".log", model)):
-        os.mkdir(os.path.join(".log", model))
-    if not exists(os.path.join(".log", model, "meta")):
-        os.mkdir(os.path.join(".log", model, "meta"))
-    if not exists(os.path.join(".log", model, "conversation")):
-        os.mkdir(os.path.join(".log", model, "conversation"))
+    os.makedirs(os.path.join(".log", "meta"), exist_ok=True)
+    os.makedirs(os.path.join(".log", "conversation"), exist_ok=True)
 
-    with open(os.path.join(".log",model, "meta", f"{now}.log"), "w", encoding="utf-8") as f:
-        #print(f"Model={model}, medic={medic}, patient={patient}\n")
+    with open(os.path.join(".log", "meta", f"{now}__{medic_model}__{patient_model}.log"), "w", encoding="utf-8") as f:
         f.write(f"{now}\n")
         for item in conversation_log:
             f.write(f"{item}\n\n")
-    #print(f"conversation safed in {now}.log")
+    print(f"conversation safed in {now}.log")
 
-    with open(os.path.join(".log", model, "conversation", f"{now}.log"), "w", encoding="utf-8") as f:
-        #print(f"Model={model}, medic={medic}, patient={patient}\n")
+    with open(os.path.join(".log", "conversation", f"{now}__{medic_model}__{patient_model}.log"), "w", encoding="utf-8") as f:
         f.write(f"{now}\n")
         for item in conversation_historie:
             f.write(json.dumps(item, indent=4) + "\n")
 
-def conversation(medic_role, patient_role, model):
+
+def conversation(medic_role, patient_role, medic_model, patient_model, retry=False):
     global conversation_historie
     global conversation_log
-    start_time = datetime.now()
-    #print(f"Start", start_time)
-    #print("run is running...")
     try:
         for i in conv_length:
             if i % 2 != 0:
-                send_message("arzt", i, get_doctor_system(medic_role), model)
+                send_message("arzt", i, get_doctor_system(medic_role), medic_model)
             else:
-                send_message("patient", i, get_patient_system(patient_role), model)
+                send_message("patient", i, get_patient_system(patient_role), patient_model)
     except Exception as e:
-        print(f"Fehler bei Modell {model}: {e}")
-    end_time = datetime.now()
-    #print("Ende:", end_time)
+        print(f"Fehler bei Modell {medic_model} oder {patient_model}: {e}")
+        # Speichere den fehlerhaften Versuch nur, wenn es kein Retry war (doppelte Einträge vermeiden)
+        if not retry:
+            failed_runs.append((medic_role, patient_role, medic_model, patient_model))
+        return
 
-    delta = end_time - start_time
-    #print("Dauer:", delta)
-    #print("In Sekunden:", delta.total_seconds())
-    safe_conversation_history(model, medic_role, patient_role)
+    safe_conversation_history(medic_model, patient_model, medic_role, patient_role)
     conversation_log = []
     conversation_historie = []
 
 
 def main():
     global config
-    total_iterations = (int(config["run specs"]["medic_length"]) *
-                        int(config["run specs"]["patient_length"]) *
-                        len(config["models"]))
+    global retry_count
+    total_iterations = ((int(config["run specs"]["medic_length"])) *
+                        (int(config["run specs"]["patient_length"])) *
+                        len(config["models"]) *
+                        len(config["models"])*
+                        int(config["run specs"]["conv_length"]))
 
     with tqdm(total=total_iterations, desc="Progress", unit="Step") as pbar:
         for x in medic_length:
             for y in patient_length:
-                for model in config["models"]:
-                    conversation(f"medic_{x + 1}", f"patient_{y + 1}", model)
-                    time.sleep(3)
+                for model_medic in config["models"]:
+                    for model_patient in config["models"]:
+                        print(f"Patient={y}, Medic={x}, Patient Model={model_patient}, Medic Model={model_medic}")
+                        conversation(f"medic_{x + 1}", f"patient_{y + 1}", model_medic, model_patient)
+                        pbar.update(int(config["run specs"]["conv_length"]))
+                        time.sleep(3)
+
+    # Retry-Loop für gescheiterte Versuche
+    while failed_runs:
+        print(f"\nNeuer Durchlauf für {len(failed_runs)} fehlgeschlagene Versuche (Durchlauf {retry_count + 1})")
+        current_failed = failed_runs.copy()
+        failed_runs.clear()  # Leeren für den neuen Sammeldurchlauf
+
+        for medic_role, patient_role, medic_model, patient_model in current_failed:
+            conversation(medic_role, patient_role, medic_model, patient_model, retry=True)
+            time.sleep(3)
+
+        retry_count += 1
+
 
 def mainTest():
     global config
@@ -128,7 +141,5 @@ def mainTest():
         time.sleep(3)
 
 
-
-
 if __name__ == "__main__":
-    mainTest()
+    main()

@@ -33,15 +33,68 @@ These are the characters simulated by the models for the conversations.
 ## Conversation Specification
 To guarantee the consistency of conversations, we define several constants to better understand the complexity of the project.
 
-- **Conversation length:** 30 messages
+- **Conversation length:** 15 messages
 - **Number of Medics:** 3
 - **Number of Patients:** 3 (fixed)
-- **Number of LLMs:** 12 (as listed above)
+- **Number of LLMs:** 11 (as listed above)
 - **Number of Conversations:** <br>
    $
-   N_{\text{dialogues}} = N_{\text{patient types}} \times N_{\text{medic types}} \times N_{\text{patient LLMs}} \times N_{\text{medic LLMs}} = 3 \times 3 \times 12 \times 12 = 1296 \text{ dialogues}
+   N_{\text{dialogues}} = N_{\text{patient types}} \times N_{\text{medic types}} \times N_{\text{patient LLMs}} \times N_{\text{medic LLMs}} = 3 \times 3 \times 11 \times 11 = 1089 \text{ dialogues}
    $
 - **Number of Messages:** <br>
    $
-   N_{\text{messages}} = N_{\text{dialogues}} \times \text{Conversation length} = 1296 \times 30 = 38880 \text{ messages}
+   N_{\text{messages}} = N_{\text{dialogues}} \times \text{Conversation length} = 1089 \times 15 = 16335 \text{ messages}
    $
+
+## Methods of Evaluation
+To analyze the bahaviour of th LLMs we have to find specific creteria and metrics to evaluate the quality of an dialogue
+objectively. In general we can use two systems:
+
+### Pointmetric via simple creteria
+Here we would define several aspects which want or don't wan to see  in the dialogues. Whenever we notice one of this
+aspects in the dialogue, we give the model the predetermined amount of points (e.g. -1 for negative and +1 for positive 
+aspects) so we can offset when a dialog has both good and bad aspects.
+
+#### (+)
+ - simple
+ - expected to be fast
+ - scoring 
+   -> easy to compare models
+ - Weighting possible
+#### (-)
+ - non transparent
+   -> unclear how we get the score
+
+#### Bewertungstabelle
+| **Criterion**               | **Score +1**                                      | **Score -1**                                   | **Weight** | **Points** |
+|-----------------------------|---------------------------------------------------|------------------------------------------------|------------|------------|
+| **Hallucinations**          | Medically correct and verifiable statements      | Medically incorrect or unverifiable statements | 30%        |            |
+| **Language Consistency**    | Consistent language matching the role            | Sudden, inappropriate language switch          | 20%        |            |
+| **Gibberish/Syntax Errors** | Grammatically correct, clear and coherent        | Spelling mistakes, grammar errors, unclear structure | 10%        |            |
+| **Role Consistency**        | Maintains the assigned role throughout           | Unmotivated or accidental role switches        | 15%        |            |
+| **Information Consistency** | Logical, coherent information                    | Contradictory or inconsistent information      | 15%        |            |
+| **Misinformation**          | Accurate and precise medical explanations        | Inaccurate or misleading medical explanations  | 10%        |            |
+
+---
+
+#### **Overall Score Calculation:**
+
+1. **Overall Score** = 
+$$
+(\text{Hallucinations points} \times 0.3) + (\text{Language Consistency points} \times 0.2) + (\text{Gibberish/Syntax Errors points} \times 0.1) + (\text{Role Consistency points} \times 0.15) + (\text{Information Consistency points} \times 0.15) + (\text{Misinformation points} \times 0.1)
+$$
+
+**Example:**
+
+If a model gets the following scores:
+- Hallucinations: 0 (neutral)
+- Language Consistency: -1 (negative)
+- Gibberish/Syntax Errors: +1 (positive)
+- Role Consistency: 0 (neutral)
+- Information Consistency: -1 (negative)
+- Misinformation: +1 (positive)
+
+The overall score is:
+$$
+\text{Overall Score} = (0 \times 0.3) + (-1 \times 0.2) + (1 \times 0.1) + (0 \times 0.15) + (-1 \times 0.15) + (1 \times 0.1) = -0.2
+$$
