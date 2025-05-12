@@ -1,21 +1,25 @@
-import configparser, dotenv, os
-import json
-import time
-from os.path import exists
+import configparser, dotenv, os, time, json, logging, sys
+from logging import info, error
 
 from openai import OpenAI
 from datetime import datetime
-
 from tqdm import tqdm
-
 from processing_en import get_doctor_system, get_patient_system
 
+from typing import List, Dict, Any
+
+failed_runs: List[tuple[str, str, str, str]] = []
+message: str = ""
+conversation_historie: List[Dict[str, Any]] = []
+conversation_log: List[Any] = []
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    stream=sys.stdout  # <--- statt stderr
+)
+
 dotenv.load_dotenv(os.path.join(".", ".env"))
-retry_count = 0
-failed_runs = []
-message = ""
-conversation_historie = []
-conversation_log = []
 
 client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
@@ -31,13 +35,18 @@ patient_length = range(int(config["run specs"]["patient_length"]))
 medic_length = range(int(config["run specs"]["medic_length"]))
 
 
-def thoughtchop(message):
+def thoughtchop(message: str) -> str:
     if "<think>" in message:
         message = message.split("</think>")[1].replace("\n", "")
     return message
 
 
-def send_message(role, i, system_prompt, model):
+def send_message(
+    role: str,
+    i: int,
+    system_prompt: str,
+    model: str
+) -> None:
     global message
     global conversation_historie
     global conversation_log
@@ -56,12 +65,16 @@ def send_message(role, i, system_prompt, model):
     conversation_log.append(f"{now}: {chat_completion}")
     response = thoughtchop(chat_completion.choices[0].message.content)
 
-    print(f"Message={i}, User={role}: {response}")
+    info(f"Message={i}, User={role}: {response}")
     conversation_historie.append({"time": now, "role": role, "content": response})
     message = response
 
 
-def safe_conversation_history(medic_model, patient_model, medic, patient):
+def safe_conversation_history(
+    medic_model: str,
+    patient_model: str,
+    statstring: str
+) -> None:
     global conversation_log
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -70,19 +83,31 @@ def safe_conversation_history(medic_model, patient_model, medic, patient):
 
     with open(os.path.join(".log", "meta", f"{now}__{medic_model}__{patient_model}.log"), "w", encoding="utf-8") as f:
         f.write(f"{now}\n")
+        f.write(f"{statstring}\n")
         for item in conversation_log:
             f.write(f"{item}\n\n")
-    print(f"conversation safed in {now}.log")
+    info(f"meta conversation safed in {os.path.join('.log', 'meta', f'{now}__{medic_model}__{patient_model}.log')}")
 
     with open(os.path.join(".log", "conversation", f"{now}__{medic_model}__{patient_model}.log"), "w", encoding="utf-8") as f:
         f.write(f"{now}\n")
+        f.write(f"{statstring}\n")
         for item in conversation_historie:
             f.write(json.dumps(item, indent=4) + "\n")
+    info(f"conversation safed in {os.path.join('.log', 'conversation', f'{now}__{medic_model}__{patient_model}.log')}")
 
 
-def conversation(medic_role, patient_role, medic_model, patient_model, retry=False):
+def conversation(
+    medic_role: str,
+    patient_role: str,
+    medic_model: str,
+    patient_model: str,
+    run: int
+) -> None:
     global conversation_historie
     global conversation_log
+    global failed_runs
+    statstring = f"Patient={patient_role}, Medic={medic_role}, Patient Model={patient_model}, Medic Model={medic_model}, Try={run}"
+    info(statstring)
     try:
         for i in conv_length:
             if i % 2 != 0:
@@ -90,20 +115,22 @@ def conversation(medic_role, patient_role, medic_model, patient_model, retry=Fal
             else:
                 send_message("patient", i, get_patient_system(patient_role), patient_model)
     except Exception as e:
-        print(f"Fehler bei Modell {medic_model} oder {patient_model}: {e}")
-        # Speichere den fehlerhaften Versuch nur, wenn es kein Retry war (doppelte Einträge vermeiden)
-        if not retry:
-            failed_runs.append((medic_role, patient_role, medic_model, patient_model))
+        error(f"Fehler bei Modell {medic_model} oder {patient_model}: {e}")
+        failed_runs.append((medic_role, patient_role, medic_model, patient_model))
+        conversation_log = []
+        conversation_historie = []
         return
 
-    safe_conversation_history(medic_model, patient_model, medic_role, patient_role)
+    safe_conversation_history(medic_model, patient_model, statstring)
     conversation_log = []
     conversation_historie = []
 
 
-def main():
+def main() -> None:
     global config
-    global retry_count
+    global failed_runs
+    retry_count = 0
+
     total_iterations = ((int(config["run specs"]["medic_length"])) *
                         (int(config["run specs"]["patient_length"])) *
                         len(config["models"]) *
@@ -115,30 +142,26 @@ def main():
             for y in patient_length:
                 for model_medic in config["models"]:
                     for model_patient in config["models"]:
-                        print(f"Patient={y}, Medic={x}, Patient Model={model_patient}, Medic Model={model_medic}")
-                        conversation(f"medic_{x + 1}", f"patient_{y + 1}", model_medic, model_patient)
+                        conversation(f"medic_{x + 1}", f"patient_{y + 1}", model_medic, model_patient, retry_count)
                         pbar.update(int(config["run specs"]["conv_length"]))
                         time.sleep(3)
 
+    retry_count += 1
+
     # Retry-Loop für gescheiterte Versuche
     while failed_runs:
-        print(f"\nNeuer Durchlauf für {len(failed_runs)} fehlgeschlagene Versuche (Durchlauf {retry_count + 1})")
+        info(f"\nNeuer Durchlauf für {len(failed_runs)} fehlgeschlagene Versuche (Durchlauf {retry_count})")
         current_failed = failed_runs.copy()
         failed_runs.clear()  # Leeren für den neuen Sammeldurchlauf
 
-        for medic_role, patient_role, medic_model, patient_model in current_failed:
-            conversation(medic_role, patient_role, medic_model, patient_model, retry=True)
-            time.sleep(3)
+        with tqdm(total=len(current_failed)*int(config["run specs"]["conv_length"]), desc="Progress", unit="Step") as pbar:
+            for medic_role, patient_role, medic_model, patient_model in current_failed:
+                info(f"Patient={patient_role}, Medic={medic_role}, Patient Model={patient_model}, Medic Model={medic_model}")
+                conversation(medic_role, patient_role, medic_model, patient_model, retry_count)
+                pbar.update(int(config["run specs"]["conv_length"]))
+                time.sleep(3)
 
         retry_count += 1
-
-
-def mainTest():
-    global config
-    for model in config["models"]:
-        conversation(f"medic_1", f"patient_1", model)
-        print(model)
-        time.sleep(3)
 
 
 if __name__ == "__main__":

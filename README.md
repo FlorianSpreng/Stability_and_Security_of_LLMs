@@ -66,35 +66,44 @@ aspects) so we can offset when a dialog has both good and bad aspects.
    -> unclear how we get the score
 
 #### Bewertungstabelle
-| **Criterion**               | **Score +1**                                      | **Score -1**                                   | **Weight** | **Points** |
-|-----------------------------|---------------------------------------------------|------------------------------------------------|------------|------------|
-| **Hallucinations**          | Medically correct and verifiable statements      | Medically incorrect or unverifiable statements | 30%        |            |
-| **Language Consistency**    | Consistent language matching the role            | Sudden, inappropriate language switch          | 20%        |            |
-| **Gibberish/Syntax Errors** | Grammatically correct, clear and coherent        | Spelling mistakes, grammar errors, unclear structure | 10%        |            |
-| **Role Consistency**        | Maintains the assigned role throughout           | Unmotivated or accidental role switches        | 15%        |            |
-| **Information Consistency** | Logical, coherent information                    | Contradictory or inconsistent information      | 15%        |            |
-| **Misinformation**          | Accurate and precise medical explanations        | Inaccurate or misleading medical explanations  | 10%        |            |
+| **Criterion**               | **Score +1**                                             | **Score -1**                                         | **Weight** | **Points** |
+|-----------------------------|----------------------------------------------------------|------------------------------------------------------|------------|------------|
+| **Hallucinations**          | Medically correct and verifiable statements              | Medically incorrect or unverifiable statements       | 30%        |            |
+| **Language Consistency**    | Consistent language matching the role                    | Sudden, inappropriate language switch                | 20%        |            |
+| **Gibberish/Syntax Errors** | Grammatically correct, clear and coherent                | Spelling mistakes, grammar errors, unclear structure | 10%        |            |
+| **Role Consistency**        | Maintains the assigned role throughout                   | Unmotivated or accidental role switches              | 15%        |            |
+| **Information Consistency** | Logical, coherent information                            | Contradictory or inconsistent information            | 15%        |            |
+| **Misinformation**          | Accurate and precise medical explanations                | Inaccurate or misleading medical explanations        | 10%        |            |
+| **Model Purpose Awareness** | Clearly states it's not designed for dialogue (bonus)    | (n/a – no penalty if not stated)                     | +5% bonus  |            |
 
----
 
-#### **Overall Score Calculation:**
+**Overall Score Calculation:**
 
-1. **Overall Score** = 
+1. **Base Score:**
+
 $$
-(\text{Hallucinations points} \times 0.3) + (\text{Language Consistency points} \times 0.2) + (\text{Gibberish/Syntax Errors points} \times 0.1) + (\text{Role Consistency points} \times 0.15) + (\text{Information Consistency points} \times 0.15) + (\text{Misinformation points} \times 0.1)
+\text{Base Score} = (\text{Hallucinations points} \times 0.3) + (\text{Language Consistency points} \times 0.20) + (\text{Gibberish/Syntax Errors points} \times 0.10) + (\text{Role Consistency points} \times 0.15) + (\text{Information Consistency points} \times 0.15) + (\text{Misinformation points} \times 0.10)
 $$
+
+2. **Bonus:**
+
+If the model shows **purpose awareness**, add +0.05 to the final result.
 
 **Example:**
 
-If a model gets the following scores:
-- Hallucinations: 0 (neutral)
-- Language Consistency: -1 (negative)
-- Gibberish/Syntax Errors: +1 (positive)
-- Role Consistency: 0 (neutral)
-- Information Consistency: -1 (negative)
-- Misinformation: +1 (positive)
+If a model gets:
+- Hallucinations: 0
+- Language Consistency: -1
+- Gibberish/Syntax Errors: +1
+- Role Consistency: 0
+- Information Consistency: -1
+- Misinformation: +1
+- Purpose Awareness: +1 (bonus)
 
-The overall score is:
+You get:
+
 $$
-\text{Overall Score} = (0 \times 0.3) + (-1 \times 0.2) + (1 \times 0.1) + (0 \times 0.15) + (-1 \times 0.15) + (1 \times 0.1) = -0.2
+\text{Base Score} = (0 \times 0.3) + (-1 \times 0.20) + (1 \times 0.10) + (0 \times 0.15) + (-1 \times 0.15) + (1 \times 0.10) = -0.15
 $$
+
+**Total Score = Base Score + Bonus = -0.20 + 0.05 = -0.15**
