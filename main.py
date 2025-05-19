@@ -1,25 +1,24 @@
 import configparser, dotenv, os, time, json, logging, sys
+import re
 from logging import info, error
 
 from openai import OpenAI
 from datetime import datetime
 from tqdm import tqdm
-from processing_en import get_doctor_system, get_patient_system
-
+from processing.processing import get_doctor_system, get_patient_system
 from typing import List, Dict, Any
 
 failed_runs: List[tuple[str, str, str, str]] = []
 message: str = ""
 conversation_historie: List[Dict[str, Any]] = []
 conversation_log: List[Any] = []
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     stream=sys.stdout  # <--- statt stderr
 )
 
-dotenv.load_dotenv(os.path.join(".", ".env"))
+dotenv.load_dotenv(os.path.join("", ".env"))
 
 client = OpenAI(
     api_key=os.getenv("OPENAI_API_KEY"),
@@ -45,7 +44,7 @@ def send_message(
     role: str,
     i: int,
     system_prompt: str,
-    model: str
+    model: str,
 ) -> None:
     global message
     global conversation_historie
@@ -73,27 +72,28 @@ def send_message(
 def safe_conversation_history(
     medic_model: str,
     patient_model: str,
-    statstring: str
+    statstring: str,
+    lang: str
 ) -> None:
     global conversation_log
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    os.makedirs(os.path.join(".log", "meta"), exist_ok=True)
-    os.makedirs(os.path.join(".log", "conversation"), exist_ok=True)
+    os.makedirs(os.path.join(".log", 'real_data', 'clear',f"{lang}", "meta"), exist_ok=True)
+    os.makedirs(os.path.join(".log", 'real_data', 'clear', f"{lang}", "conversation"), exist_ok=True)
 
-    with open(os.path.join(".log", "meta", f"{now}__{medic_model}__{patient_model}.log"), "w", encoding="utf-8") as f:
+    with open(os.path.join(".log", 'real_data', 'clear', f"{lang}", "meta", f"{now}__{medic_model}__{patient_model}.log"), "w", encoding="utf-8") as f:
         f.write(f"{now}\n")
         f.write(f"{statstring}\n")
         for item in conversation_log:
             f.write(f"{item}\n\n")
-    info(f"meta conversation safed in {os.path.join('.log', 'meta', f'{now}__{medic_model}__{patient_model}.log')}")
+    info(f"meta conversation safed in {os.path.join('.log', 'real_data', 'clear', f"{lang}", 'meta', f'{now}__{medic_model}__{patient_model}.log')}")
 
-    with open(os.path.join(".log", "conversation", f"{now}__{medic_model}__{patient_model}.log"), "w", encoding="utf-8") as f:
+    with open(os.path.join(".log", 'real_data', 'clear', f"{lang}", "conversation", f"{now}__{medic_model}__{patient_model}.log"), "w", encoding="utf-8") as f:
         f.write(f"{now}\n")
         f.write(f"{statstring}\n")
         for item in conversation_historie:
             f.write(json.dumps(item, indent=4) + "\n")
-    info(f"conversation safed in {os.path.join('.log', 'conversation', f'{now}__{medic_model}__{patient_model}.log')}")
+    info(f"conversation safed in {os.path.join('.log', 'real_data', 'clear', f"{lang}", 'conversation', f'{now}__{medic_model}__{patient_model}.log')}")
 
 
 def conversation(
@@ -101,32 +101,66 @@ def conversation(
     patient_role: str,
     medic_model: str,
     patient_model: str,
-    run: int
+    run: int,
+    lang: str
 ) -> None:
     global conversation_historie
     global conversation_log
     global failed_runs
+    global message
     statstring = f"Patient={patient_role}, Medic={medic_role}, Patient Model={patient_model}, Medic Model={medic_model}, Try={run}"
     info(statstring)
     try:
         for i in conv_length:
             if i % 2 != 0:
-                send_message("arzt", i, get_doctor_system(medic_role), medic_model)
+                send_message("arzt", i, get_doctor_system(medic_role, lang), medic_model)
             else:
-                send_message("patient", i, get_patient_system(patient_role), patient_model)
+                send_message("patient", i, get_patient_system(patient_role, lang), patient_model)
     except Exception as e:
         error(f"Fehler bei Modell {medic_model} oder {patient_model}: {e}")
         failed_runs.append((medic_role, patient_role, medic_model, patient_model))
         conversation_log = []
         conversation_historie = []
+        message = ""
         return
 
-    safe_conversation_history(medic_model, patient_model, statstring)
+    safe_conversation_history(medic_model, patient_model, statstring, lang)
     conversation_log = []
     conversation_historie = []
+    message = ""
+
+def already_done(
+    medic_role: str,
+    patient_role: str,
+    medic_model: str,
+    patient_model: str,
+    lang: str
+) -> bool:
+    header = f"Patient={patient_role}, Medic={medic_role}, Patient Model={patient_model}, Medic Model={medic_model}"
+    base_path = os.path.join('.log', 'real_data', 'clear', lang, 'conversation')
+
+    # Regex-Pattern für den Dateinamen
+    pattern = re.compile(
+        r".*__" + re.escape(medic_model) + r"__" + re.escape(patient_model) + r"\.log",
+        re.IGNORECASE
+    )
+
+    if not os.path.exists(base_path):
+        return False
+
+    for file in os.listdir(base_path):
+        if pattern.match(file):
+            full_path = os.path.join(base_path, file)
+            if os.path.isfile(full_path):
+                with open(full_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if header in line:
+                            return True
+    return False
 
 
-def main() -> None:
+
+def main(lang) -> None:
     global config
     global failed_runs
     retry_count = 0
@@ -142,9 +176,10 @@ def main() -> None:
             for y in patient_length:
                 for model_medic in config["models"]:
                     for model_patient in config["models"]:
-                        conversation(f"medic_{x + 1}", f"patient_{y + 1}", model_medic, model_patient, retry_count)
+                        if not already_done(f"medic_{x + 1}", f"patient_{y + 1}" , model_medic, model_patient, lang):
+                            conversation(f"medic_{x + 1}", f"patient_{y + 1}", model_medic, model_patient, retry_count, lang)
+                            time.sleep(3)
                         pbar.update(int(config["run specs"]["conv_length"]))
-                        time.sleep(3)
 
     retry_count += 1
 
@@ -156,13 +191,15 @@ def main() -> None:
 
         with tqdm(total=len(current_failed)*int(config["run specs"]["conv_length"]), desc="Progress", unit="Step") as pbar:
             for medic_role, patient_role, medic_model, patient_model in current_failed:
-                info(f"Patient={patient_role}, Medic={medic_role}, Patient Model={patient_model}, Medic Model={medic_model}")
-                conversation(medic_role, patient_role, medic_model, patient_model, retry_count)
+                if not already_done(patient_role, medic_role, medic_model, patient_model, lang):
+                    info(f"Patient={patient_role}, Medic={medic_role}, Patient Model={patient_model}, Medic Model={medic_model}")
+                    conversation(medic_role, patient_role, medic_model, patient_model, retry_count, lang)
+                    time.sleep(3)
                 pbar.update(int(config["run specs"]["conv_length"]))
-                time.sleep(3)
 
         retry_count += 1
 
 
 if __name__ == "__main__":
-    main()
+    main("de")
+    main("en")

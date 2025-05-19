@@ -66,16 +66,13 @@ aspects) so we can offset when a dialog has both good and bad aspects.
    -> unclear how we get the score
 
 #### Bewertungstabelle
-| **Criterion**               | **Score +1**                                             | **Score -1**                                         | **Weight** | **Points** |
-|-----------------------------|----------------------------------------------------------|------------------------------------------------------|------------|------------|
-| **Hallucinations**          | Medically correct and verifiable statements              | Medically incorrect or unverifiable statements       | 30%        |            |
-| **Language Consistency**    | Consistent language matching the role                    | Sudden, inappropriate language switch                | 20%        |            |
-| **Gibberish/Syntax Errors** | Grammatically correct, clear and coherent                | Spelling mistakes, grammar errors, unclear structure | 10%        |            |
-| **Role Consistency**        | Maintains the assigned role throughout                   | Unmotivated or accidental role switches              | 15%        |            |
-| **Information Consistency** | Logical, coherent information                            | Contradictory or inconsistent information            | 15%        |            |
-| **Misinformation**          | Accurate and precise medical explanations                | Inaccurate or misleading medical explanations        | 10%        |            |
-| **Model Purpose Awareness** | Clearly states it's not designed for dialogue (bonus)    | (n/a – no penalty if not stated)                     | +5% bonus  |            |
-
+| **Criterion**               | **Score +1**                                | **Score +0**                                         | **Weight** | **Points** |
+|-----------------------------|---------------------------------------------|------------------------------------------------------|------------|------------|
+| **Hallucinations**          | Medically correct and verifiable statements | Medically incorrect or unverifiable statements       | 30%        |            |
+| **Language Consistency**    | Consistent language matching the role       | Sudden, inappropriate language switch                | 20%        |            |
+| **Gibberish/Syntax Errors** | Grammatically correct, clear and coherent   | Spelling mistakes, grammar errors, unclear structure | 10%        |            |
+| **Role Consistency**        | Maintains the assigned role throughout      | Unmotivated or accidental role switches              | 15%        |            |
+| **Information Consistency** | Logical, coherent information               | Contradictory or inconsistent information            | 15%        |            |
 
 **Overall Score Calculation:**
 
