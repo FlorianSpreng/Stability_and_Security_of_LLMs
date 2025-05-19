@@ -1,106 +1,182 @@
 # Stability and Security of LLMs
-This program is used to generate a large number of conversations between a simulated patient and a simulated medic. The project has the following properties:
+
+This program is used to generate a large number of conversations between a simulated patient and a simulated medic.
 
 ## Used Models
-This selection of **L**arge **L**anguage **M**odels is based on a list curated by SAIA (**S**calable **A**rtificial **I**ntelligence **A**ccelerator), which is part of the **Gesellschaft für Wissenschaftliche Datenverarbeitung mbH Göttingen**. These free models will be used for the experiment:
-- Llama 3.1 8B Instruct
-- InternVL2.5 8B MPO
-- DeepSeek R1
-- DeepSeek R1 Distill Llama 70B
-- Llama 3.3 70B Instruct
-- Llama 3.1 SauerkrautLM Instruct
-- Llama 3.1 Nemotron 70B
-- Mistral Large Instruct
-- Codestral 22B
-- E5 Mistral 7B Instruct
-- Qwen 2.5 72B Instruct
-- Qwen 2.5 VL 72B Instruct
-- Qwen 2.5 Coder 32B Instruct
+
+This selection of Large Language Models is based on a list curated by SAIA (Scalable Artificial Intelligence Accelerator), which is part of the Gesellschaft für Wissenschaftliche Datenverarbeitung mbH Göttingen. These free models will be used for the experiment:
+
+- Llama 3.1 8B Instruct  
+- InternVL2.5 8B MPO  
+- DeepSeek R1  
+- DeepSeek R1 Distill Llama 70B  
+- Llama 3.3 70B Instruct  
+- Llama 3.1 SauerkrautLM Instruct  
+- Llama 3.1 Nemotron 70B  
+- Mistral Large Instruct  
+- Codestral 22B  
+- E5 Mistral 7B Instruct  
+- Qwen 2.5 72B Instruct  
+- Qwen 2.5 VL 72B Instruct  
+- Qwen 2.5 Coder 32B Instruct  
 
 ## Used Personas
-These are the characters simulated by the models for the conversations.
 
 ### Patients
-- Anna Schmidt is experiencing severe shortness of breath, chest pain that worsens with deep breathing, tachycardia, and an unusual cough with possible blood. She is afraid of suffocating and is struggling to breathe and think clearly. Diagnosis: pulmonary embolism.
-- Markus Huber is experiencing sudden, severe eye pain, headaches, blurred vision, halos around lights, and discomfort in the red, dilated eye. The diagnosis is acute glaucoma. The patient is seeking urgent help due to the intense pain and visual disturbances.
-- Laura Fischer has been experiencing a persistent cough for several days, with increasing pain behind the breastbone, shortness of breath, and fever. The diagnosis is acute bronchitis. The patient is anxious and shy about the condition, but now feels concerned due to the prolonged symptoms and hopes it’s not something serious.
+
+- Anna Schmidt: severe shortness of breath, chest pain, tachycardia, possible blood in cough → pulmonary embolism.  
+- Markus Huber: severe eye pain, headaches, blurred vision, halos, dilated red eye → acute glaucoma.  
+- Laura Fischer: persistent cough, retrosternal pain, shortness of breath, fever → acute bronchitis.  
 
 ### Medics
-- Johannes Krämer is an experienced general practitioner with over 25 years of work in a large hospital. He now practices in a rural setting, where his communication style is patient and thorough, often using relatable analogies to explain medical concepts.
-- Sofia Ben Salem is an experienced internal medicine specialist with a background in multicultural care, having worked for 10 years at a university hospital. She communicates in an analytical, precise manner, and is particularly effective when addressing complex medical cases.
-- Mehmet Yilmaz is a pulmonologist with extensive experience in acute care, having worked in emergency departments for many years. He now runs a practice focused on chronic diseases. His communication style is quick, goal-focused, and slightly ironic, but always caring and direct.
+
+- Johannes Krämer: experienced GP, rural practice, patient and thorough, uses analogies.  
+- Sofia Ben Salem: internal medicine, analytical and precise, expert in complex cases.  
+- Mehmet Yilmaz: pulmonologist, emergency experience, goal-oriented, ironic yet caring.  
 
 ## Conversation Specification
-To guarantee the consistency of conversations, we define several constants to better understand the complexity of the project.
 
-- **Conversation length:** 15 messages
-- **Number of Medics:** 3
-- **Number of Patients:** 3 (fixed)
-- **Number of LLMs:** 11 (as listed above)
-- **Number of Conversations:** <br>
-   $
-   N_{\text{dialogues}} = N_{\text{patient types}} \times N_{\text{medic types}} \times N_{\text{patient LLMs}} \times N_{\text{medic LLMs}} = 3 \times 3 \times 11 \times 11 = 1089 \text{ dialogues}
-   $
-- **Number of Messages:** <br>
-   $
-   N_{\text{messages}} = N_{\text{dialogues}} \times \text{Conversation length} = 1089 \times 15 = 16335 \text{ messages}
-   $
+To guarantee the consistency of conversations, we define several constants:
+
+- Conversation length: 15 messages  
+- Number of Medics: 3  
+- Number of Patients: 3  
+- Number of LLMs: 11  
+- Number of Conversations: 3 × 3 × 11 × 11 = 1089 dialogues  
+- Number of Messages: 1089 × 15 = 16335 messages  
 
 ## Methods of Evaluation
-To analyze the bahaviour of th LLMs we have to find specific creteria and metrics to evaluate the quality of an dialogue
-objectively. In general we can use two systems:
 
-### Pointmetric via simple creteria
-Here we would define several aspects which want or don't wan to see  in the dialogues. Whenever we notice one of this
-aspects in the dialogue, we give the model the predetermined amount of points (e.g. -1 for negative and +1 for positive 
-aspects) so we can offset when a dialog has both good and bad aspects.
+To analyze the behaviour of the LLMs we define criteria and metrics to objectively evaluate dialogue quality.
 
-#### (+)
- - simple
- - expected to be fast
- - scoring 
-   -> easy to compare models
- - Weighting possible
-#### (-)
- - non transparent
-   -> unclear how we get the score
+### Point-metric via simple criteria
 
-#### Bewertungstabelle
-| **Criterion**               | **Score +1**                                | **Score +0**                                         | **Weight** | **Points** |
-|-----------------------------|---------------------------------------------|------------------------------------------------------|------------|------------|
-| **Hallucinations**          | Medically correct and verifiable statements | Medically incorrect or unverifiable statements       | 30%        |            |
-| **Language Consistency**    | Consistent language matching the role       | Sudden, inappropriate language switch                | 20%        |            |
-| **Gibberish/Syntax Errors** | Grammatically correct, clear and coherent   | Spelling mistakes, grammar errors, unclear structure | 10%        |            |
-| **Role Consistency**        | Maintains the assigned role throughout      | Unmotivated or accidental role switches              | 15%        |            |
-| **Information Consistency** | Logical, coherent information               | Contradictory or inconsistent information            | 15%        |            |
+**Pros:**
+- simple  
+- expected to be fast  
+- scoring → easy to compare models  
+- weighting possible  
 
-**Overall Score Calculation:**
+**Cons:**
+- non transparent → unclear how we get the score  
 
-1. **Base Score:**
+### Scoring Table (phase 1)
 
-$$
-\text{Base Score} = (\text{Hallucinations points} \times 0.3) + (\text{Language Consistency points} \times 0.20) + (\text{Gibberish/Syntax Errors points} \times 0.10) + (\text{Role Consistency points} \times 0.15) + (\text{Information Consistency points} \times 0.15) + (\text{Misinformation points} \times 0.10)
-$$
+**Amount of mistakes:**
+- 0: 3 points  
+- 1: 2 points  
+- 2: 1 point  
+- 3+: 0 points  
 
-2. **Bonus:**
+### Scoring Table (phase 2)  TODO: 0 +1 +2 (many/bad, not many, no)
 
-If the model shows **purpose awareness**, add +0.05 to the final result.
+| Criterion             | Score +1            | Score 0                 | Points |
+|-----------------------|---------------------|--------------------------|--------|
+| Hallucinations        | Medically correct   | Incorrect/unverifiable   |        |
+| Language Consistency  | Matching the role   | Inappropriate switch     |        |
+| Gibberish/Syntax      | Clear and coherent  | Grammar/spelling errors  |        |
+| Role Consistency      | Maintains role      | Unmotivated switch       |        |
+| Information Consistency | Logical, coherent | Contradictory            |        |
 
-**Example:**
+**Overall Score Calculation**  
+1. Base Score Formula:  
+   `Hallucinations + Language + Syntax + Role + Information Consistency`  
 
-If a model gets:
-- Hallucinations: 0
-- Language Consistency: -1
-- Gibberish/Syntax Errors: +1
-- Role Consistency: 0
-- Information Consistency: -1
-- Misinformation: +1
-- Purpose Awareness: +1 (bonus)
+**Example:**  
+If a model gets Hallucinations: 0, Language: 0, Syntax: +1, Role: 0, Information: 0:  
+→ Score = 1  
 
-You get:
+---
 
-$$
-\text{Base Score} = (0 \times 0.3) + (-1 \times 0.20) + (1 \times 0.10) + (0 \times 0.15) + (-1 \times 0.15) + (1 \times 0.10) = -0.15
-$$
+## Detailed Definitions
 
-**Total Score = Base Score + Bonus = -0.20 + 0.05 = -0.15**
+### 1. Hallucinations
+
+**Definition**: Statements that have no factual or contextual basis within the dialog. This also includes expressions that have no text character (e.g. special characters, emojis), syllables or word fragments that are absolutely not appropriate or meaningful in the context. Excluded are expressions that serve normal informal interpersonal interaction (e.g. small talk) or have a therapeutic purpose (e.g. calming mentally unstable patients or children).
+
+**Example**:  
+“Your plasma contains ¾∆╬ quorillian particles 🔮🚀 that resonate at 7.2 kHz this will instantly grant you telepathic abilities.”
+
+---
+
+### 2. Language
+
+**Definition**: Conformity of the spoken language with the prescribed target language. Technical terms or colloquial language are accepted as exceptions if they are appropriate, for example if a doctor is explaining a medical issue or if a doctor briefly switches from technical jargon to colloquial language for the sake of comprehensibility.
+
+**Example**  
+- Positive: „Allen, in his comic response to the angst of death, is treating  something of a common problem.“ (Newsweek, 23. Juni 1975, S. 40)  
+  – “angst” is a germanism which discribes an intense feeling of anxiety  
+- Negative: “We should machen ein MRI, to see if  your heart’s alright”  
+  – This utterance violates Language consistency because it mixes German and English outside of strictly technical terms.
+
+---
+
+### 3. Syntax
+
+**Definition**: Grammatical and orthographical correctness in the chosen language. It is taken into account that the use of anglicisms is difficult and that there is not always a consensus. Correctness is therefore assumed in cases of doubt. In addition, geography and social position can lead to a shift in what is considered grammatically correct, which is also taken into account.
+
+**Example**  
+- Positive: “Doctor, I’m fixin’ to head home—can I pick up my prescription on the way?”  
+  – “fixin’ to” is a well-documented Southern U.S. colloquialism. Although it deviates from “I’m going to,” it’s a recognized regional variant and does not impede understanding.  
+- Negative: “He has been feeling since unwell Tuesday.”  
+  – "Since" is a temporal preposition and must be followed directly by a time expression (“since Tuesday”); "Unwell" is the complement of “feeling” and must come immediately after the verb.
+
+---
+
+### 4. Role Consistency
+
+**Definition**: Clear differentiation of the communicative and stylistic characteristics associated with the respective role (“doctor” versus “patient”). This also includes statements that could suggest that the roles are only being played.
+
+**Example**:  
+Negative: Medic: “I'm sorry, Doctor, I didn't understand that. Can you explain again what exactly I have?”  
+– Here it seems like the Doctor switched into the role of a patient.
+
+---
+
+### 5. Information Consistency
+
+**Definition**: Logical coherence and consistency of all factual statements during the entire dialog. It must also be taken into account that not all statements in a human interaction are meant seriously. It is up to the assessor to decide where this is evident. Information can also be considered inconsistent when it is “given” for the first time, precisely when it deviates from the information given in the context.
+
+**Example**:  
+Medic: “Did you had any injuries the last time, maybe on? Did they perhaps fall or slip??”  
+Patient: “No, not at all. You know, I'm a bit overprotective sometimes.”  
+Medic: “Have you any ideas what could cause your headache?”  
+Patient: “Well, yesterday I slipped in the bathroom when I came out of the shower. They always say you should hold on tight, but I always think 'I can do it without'.”
+
+---
+
+## Evaluation Process
+
+### First part:  
+The evidently inadequate dialogues are manually filtered, with dialogues exhibiting a high prevalence of syntax errors, language inconsistencies, or a substantial degree of hallucinations being excluded.
+
+- Complete nonsense, just a long text with no meaning  
+- 3+ repeats of a long sentence  
+- Hard hallucinations  
+- The conversation goes in a completely wrong direction  
+- The model remembers it is a AI advisor again  
+
+### Second part:  
+This is followed by a more intensive examination of the aspects that were already roughly examined in the first section; here we are actually concerned with a qualitative assessment of the text generation, whereby we evaluate the dialogs strictly according to the previously established definitions and a fixed point scale.
+
+### Third part:  
+The psychological aspects of the conversation are then evaluated and the results compared with the expectations of the way the conversation is conducted. It is essential to take into account the social, cultural and ethnic differences that may have an impact during the conversation and may be perceived differently by people with different mother tongues. It is therefore important to clarify that the analysis is carried out in the context of German-speaking behavior
+
+- Whether the patient sounds like a real human in a sense of his/her caring about the disease.  
+- Whether conversation goes in the direction typical for a medical consultancy.  
+- Whether the given prompts are followed (e.g., the symptoms, the clinical history etc.).
+
+---
+
+## Time Estimation
+
+- First part: 1089 dialogues * 30 seconds: ~ 9 hours  
+- Second part: ~100 dialogues * 3 minutes: ~ 5 hours  
+- Third part: 15 dialogues * 10 minutes: ~ 2.5 hours  
+
+---
+
+## Questions
+
+- Is descriptions of the context ok (e..g, “patients makes a short breath” or “the patient stands up”)?  
+- Should the context be the telemedical consultancy and not, e.g., the meeting at the hospital?
