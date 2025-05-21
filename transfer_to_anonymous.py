@@ -2,7 +2,7 @@ import hashlib
 import os
 from pathlib import Path
 
-conversation_path = Path('.', '.log', 'real_data', 'clear', 'de', 'conversation')
+conversation_path = Path('.', '.log', 'real_data', 'clear', 'en', 'conversation')
 encrypted_conversation_path = str(conversation_path).replace("clear", "encrypted")
 encrypted_conversation_path = Path(encrypted_conversation_path)
 os.makedirs(encrypted_conversation_path, exist_ok=True)
