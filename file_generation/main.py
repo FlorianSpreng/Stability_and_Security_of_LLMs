@@ -1,12 +1,15 @@
 import configparser, dotenv, os, time, json, logging, sys
 import re
+import subprocess
 from logging import info, error
+import time
 
 from openai import OpenAI
 from datetime import datetime
 from tqdm import tqdm
 from processing.processing import get_doctor_system, get_patient_system
 from typing import List, Dict, Any
+from mock_saia import chat_completions
 
 failed_runs: List[tuple[str, str, str, str]] = []
 message: str = ""
@@ -15,7 +18,7 @@ conversation_log: List[Any] = []
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    stream=sys.stdout  # <--- statt stderr
+    stream=sys.stdout
 )
 
 dotenv.load_dotenv(os.path.join("", ".env"))
@@ -26,7 +29,7 @@ client = OpenAI(
 )
 
 config = configparser.ConfigParser()
-with open("config.ini", "r", encoding="utf-8") as f:
+with open("./config.ini", "r", encoding="utf-8") as f:
     config.read_file(f)
 
 conv_length = range(1, int(config["run specs"]["conv_length"]))
@@ -52,7 +55,7 @@ def send_message(
 
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    chat_completion = client.chat.completions.create(
+    chat_completion = chat_completions( #client.chat.completions.create
 
         messages=[{"role": "system",
                    "content": f"Behaviour: {system_prompt} + conversation history: {conversation_historie}"},
@@ -201,5 +204,16 @@ def main(lang) -> None:
 
 
 if __name__ == "__main__":
-    main("de")
-    main("en")
+
+    print("🚀 Starte Mock-Server im Hintergrund...")
+    server_process = subprocess.Popen(
+        [sys.executable, "mock_saia.py"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+    time.sleep(1)
+
+    main(sys.argv[1])
+
+    print("🛑 Schließe Mock-Server...")
+    server_process.terminate()
