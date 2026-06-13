@@ -204,16 +204,5 @@ def main(lang) -> None:
 
 
 if __name__ == "__main__":
-
-    print("🚀 Starte Mock-Server im Hintergrund...")
-    server_process = subprocess.Popen(
-        [sys.executable, "mock_saia.py"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
-    )
-    time.sleep(1)
-
     main(sys.argv[1])
 
-    print("🛑 Schließe Mock-Server...")
-    server_process.terminate()
