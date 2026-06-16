@@ -1,19 +1,18 @@
-import configparser, dotenv, os, time, json, logging, sys
-import re
-import subprocess
-from logging import info, error
-import time
+import configparser, dotenv, os, json, logging, sys, re, time
 
+from logging import info, error
 from openai import OpenAI
 from datetime import datetime
 from tqdm import tqdm
+
+from file_generation.conv_his import ConvHis
 from processing.processing import get_doctor_system, get_patient_system
 from typing import List, Dict, Any
 from mock_saia import chat_completions
+import conv_his
 
 failed_runs: List[tuple[str, str, str, str]] = []
 message: str = ""
-conversation_historie: List[Dict[str, Any]] = []
 conversation_log: List[Any] = []
 logging.basicConfig(
     level=logging.INFO,
@@ -48,55 +47,27 @@ def send_message(
     i: int,
     system_prompt: str,
     model: str,
+    conv_his: Dict[datetime, Dict[str, Any]]
 ) -> None:
     global message
-    global conversation_historie
     global conversation_log
 
-    now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     chat_completion = chat_completions( #client.chat.completions.create
 
         messages=[{"role": "system",
-                   "content": f"Behaviour: {system_prompt} + conversation history: {conversation_historie}"},
+                   "content": f"Behaviour: {system_prompt} + conversation history: {conv_his}"},
                   {"role": "user", "content": f"{role}: {message}"}
                   ],
         model=model
     )
-
+    now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")
     conversation_log.append(f"{now}: {chat_completion}")
     response = thoughtchop(chat_completion.choices[0].message.content)
 
     info(f"Message={i}, User={role}: {response}")
-    conversation_historie.append({"time": now, "role": role, "content": response})
+    conv_his.append(now, {"role": role, "content": response})
     message = response
-
-
-def safe_conversation_history(
-    medic_model: str,
-    patient_model: str,
-    statstring: str,
-    lang: str
-) -> None:
-    global conversation_log
-    now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-    os.makedirs(os.path.join(".log", 'real_data', 'clear',f"{lang}", "meta"), exist_ok=True)
-    os.makedirs(os.path.join(".log", 'real_data', 'clear', f"{lang}", "conversation"), exist_ok=True)
-
-    with open(os.path.join(".log", 'real_data', 'clear', f"{lang}", "meta", f"{now}__{medic_model}__{patient_model}.log"), "w", encoding="utf-8") as f:
-        f.write(f"{now}\n")
-        f.write(f"{statstring}\n")
-        for item in conversation_log:
-            f.write(f"{item}\n\n")
-    info(f"meta conversation safed in {os.path.join('.log', 'real_data', 'clear', f"{lang}", 'meta', f'{now}__{medic_model}__{patient_model}.log')}")
-
-    with open(os.path.join(".log", 'real_data', 'clear', f"{lang}", "conversation", f"{now}__{medic_model}__{patient_model}.log"), "w", encoding="utf-8") as f:
-        f.write(f"{now}\n")
-        f.write(f"{statstring}\n")
-        for item in conversation_historie:
-            f.write(json.dumps(item, indent=4) + "\n")
-    info(f"conversation safed in {os.path.join('.log', 'real_data', 'clear', f"{lang}", 'conversation', f'{now}__{medic_model}__{patient_model}.log')}")
 
 
 def conversation(
@@ -107,29 +78,28 @@ def conversation(
     run: int,
     lang: str
 ) -> None:
-    global conversation_historie
     global conversation_log
     global failed_runs
     global message
+    conv_his = ConvHis(f"{medic_model}__{patient_model}")
     statstring = f"Patient={patient_role}, Medic={medic_role}, Patient Model={patient_model}, Medic Model={medic_model}, Try={run}"
     info(statstring)
     try:
         for i in conv_length:
             if i % 2 != 0:
-                send_message("arzt", i, get_doctor_system(medic_role, lang), medic_model)
+                send_message("arzt", i, get_doctor_system(medic_role, lang), medic_model, conv_his)
             else:
-                send_message("patient", i, get_patient_system(patient_role, lang), patient_model)
+                send_message("patient", i, get_patient_system(patient_role, lang), patient_model, conv_his)
     except Exception as e:
         error(f"Fehler bei Modell {medic_model} oder {patient_model}: {e}")
         failed_runs.append((medic_role, patient_role, medic_model, patient_model))
         conversation_log = []
-        conversation_historie = []
+        conv_his = None
         message = ""
         return
 
-    safe_conversation_history(medic_model, patient_model, statstring, lang)
+    conv_his.save_conv_his()
     conversation_log = []
-    conversation_historie = []
     message = ""
 
 def already_done(
